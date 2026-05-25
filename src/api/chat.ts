@@ -20,17 +20,17 @@ export async function requestLessonPlan(input: LessonInput): Promise<GenerateLes
     try {
       data = JSON.parse(responseText) as GenerateLessonResponse | { error?: string };
     } catch {
-      throw new Error("API가 JSON이 아닌 응답을 반환했습니다. Vercel 배포의 /api/chat 라우트를 확인해 주세요.");
+      throw new Error("API returned a non-JSON response. Please redeploy and check the /api/chat route.");
     }
 
     if (!response.ok || !("plan" in data)) {
-      throw new Error("수업설계안 생성 요청에 실패했습니다.");
+      throw new Error("Lesson generation request failed.");
     }
 
     return data;
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.");
+      throw new Error("The request timed out. Please try again.");
     }
     throw error;
   } finally {

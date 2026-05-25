@@ -20,6 +20,10 @@ type ApiResponse = {
   json(body: unknown): void;
 };
 
+type OpenAIGenerationResult =
+  | { ok: true; plan: LessonPlan }
+  | { ok: false; reason: string };
+
 function isLessonInput(value: unknown): value is LessonInput {
   if (!value || typeof value !== "object") {
     return false;
@@ -106,10 +110,10 @@ JSON 스키마:
 }`;
 }
 
-async function generateWithOpenAI(input: LessonInput): Promise<LessonPlan | null> {
+async function generateWithOpenAI(input: LessonInput): Promise<OpenAIGenerationResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return null;
+    return { ok: false, reason: "OPENAI_API_KEY가 서버 환경변수에 없습니다." };
   }
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -136,7 +140,7 @@ async function generateWithOpenAI(input: LessonInput): Promise<LessonPlan | null
   });
 
   if (!response.ok) {
-    return null;
+    return { ok: false, reason: `OpenAI 응답 오류: HTTP ${response.status}` };
   }
 
   const data = (await response.json()) as {
@@ -144,14 +148,16 @@ async function generateWithOpenAI(input: LessonInput): Promise<LessonPlan | null
   };
   const content = data.choices?.[0]?.message?.content;
   if (!content) {
-    return null;
+    return { ok: false, reason: "OpenAI 응답에 생성 내용이 없습니다." };
   }
 
   try {
     const parsed = JSON.parse(content) as unknown;
-    return isLessonPlan(parsed) ? parsed : null;
+    return isLessonPlan(parsed)
+      ? { ok: true, plan: parsed }
+      : { ok: false, reason: "OpenAI 응답 형식이 수업설계안 타입과 맞지 않습니다." };
   } catch {
-    return null;
+    return { ok: false, reason: "OpenAI 응답을 JSON으로 해석하지 못했습니다." };
   }
 }
 
@@ -166,21 +172,37 @@ export default async function handler(request: ApiRequest, response: ApiResponse
   const body = readBody(request.body);
   const input = isLessonInput(body.input) ? body.input : defaultLessonInput;
 
+  if (!process.env.OPENAI_API_KEY) {
+    const payload: GenerateLessonResponse = {
+      plan: createFallbackLesson(input),
+      source: "fallback",
+      message: ".env.local에 OPENAI_API_KEY가 설정되어 있지 않아 더미 결과를 표시했습니다.",
+    };
+    response.status(200).json(payload);
+    return;
+  }
+
   try {
-    const openAiPlan = await generateWithOpenAI(input);
-    if (openAiPlan) {
-      const payload: GenerateLessonResponse = { plan: openAiPlan, source: "openai" };
+    const result = await generateWithOpenAI(input);
+    if (result.ok) {
+      const payload: GenerateLessonResponse = { plan: result.plan, source: "openai" };
       response.status(200).json(payload);
       return;
     }
-  } catch {
-    // Keep the app useful even when the GPT API is unavailable.
-  }
 
-  const payload: GenerateLessonResponse = {
-    plan: createFallbackLesson(input),
-    source: "fallback",
-    message: "OpenAI API를 사용할 수 없어 더미 결과를 표시했습니다.",
-  };
-  response.status(200).json(payload);
+    const payload: GenerateLessonResponse = {
+      plan: createFallbackLesson(input),
+      source: "fallback",
+      message: `${result.reason} 더미 결과를 표시했습니다.`,
+    };
+    response.status(200).json(payload);
+    return;
+  } catch {
+    const payload: GenerateLessonResponse = {
+      plan: createFallbackLesson(input),
+      source: "fallback",
+      message: "OpenAI API 호출 중 예외가 발생해 더미 결과를 표시했습니다.",
+    };
+    response.status(200).json(payload);
+  }
 }

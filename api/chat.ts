@@ -7,6 +7,7 @@ import {
   type LessonInput,
   type LessonPlan,
 } from "../src/lib/lesson-types";
+import { LESSON_DESIGN_SYSTEM_PROMPT, LESSON_DESIGN_USER_PROMPT_GUIDE } from "../src/lib/system-prompt";
 
 type ApiRequest = {
   method?: string;
@@ -17,7 +18,6 @@ type ApiResponse = {
   setHeader(name: string, value: string | string[]): void;
   status(code: number): ApiResponse;
   json(body: unknown): void;
-  end(body?: string): void;
 };
 
 function isLessonInput(value: unknown): value is LessonInput {
@@ -84,14 +84,7 @@ function buildPrompt(input: LessonInput) {
 입력 조건:
 ${conditions}
 
-작성 기준:
-- 모든 차시에 실제 사례 또는 현실 문제 상황을 반드시 포함합니다.
-- 학생 수준에 맞게 용어를 쉽게 풀고, 교사가 말할 수 있는 안내 문장 수준으로 구체화합니다.
-- 단순 설명형 수업이 아니라 사례 기반, 참여형, PBL 중심 수업으로 설계합니다.
-- 실제 수업 운영이 가능하도록 준비물, 모둠 활동, 질문, 산출물, 평가 기준을 구체적으로 포함합니다.
-- 개인정보, 저작권, 편향, 안전성 등 AI 윤리 점검 요소를 반영합니다.
-- 차시별 흐름은 도입-탐구/실습-공유/성찰의 흐름이 보이게 작성합니다.
-- 응답은 마크다운이 아니라 유효한 JSON 객체만 반환합니다.
+${LESSON_DESIGN_USER_PROMPT_GUIDE}
 
 JSON 스키마:
 {
@@ -131,8 +124,7 @@ async function generateWithOpenAI(input: LessonInput): Promise<LessonPlan | null
       messages: [
         {
           role: "system",
-          content:
-            "당신은 한국 공교육 AI·정보 교사를 돕는 수업설계 전문가입니다. 실제 사례, PBL, 평가 루브릭을 구체적으로 설계하고 유효한 JSON만 반환합니다.",
+          content: LESSON_DESIGN_SYSTEM_PROMPT,
         },
         {
           role: "user",

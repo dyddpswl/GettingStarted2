@@ -1,5 +1,5 @@
-import LessonDesignerApp from "@/components/LessonDesignerApp";
+import Chatbot from "@/components/Chatbot";
 
 export default function Home() {
-  return <LessonDesignerApp />;
+  return <Chatbot />;
 }

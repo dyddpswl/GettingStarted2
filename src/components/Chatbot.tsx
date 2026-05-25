@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { requestLessonPlan } from "@/api/chat";
 import {
   defaultLessonInput,
   fieldLabels,
   lessonOptions,
-  type GenerateLessonResponse,
   type LessonInput,
   type LessonPlan,
   type LessonSection,
@@ -20,16 +20,10 @@ function sectionText(section: LessonSection) {
 }
 
 function planText(plan: LessonPlan) {
-  return [
-    plan.title,
-    plan.subtitle,
-    plan.summary,
-    "",
-    ...plan.sections.map((section) => sectionText(section)),
-  ].join("\n\n");
+  return [plan.title, plan.subtitle, plan.summary, "", ...plan.sections.map((section) => sectionText(section))].join("\n\n");
 }
 
-export default function LessonDesignerApp() {
+export default function Chatbot() {
   const [screen, setScreen] = useState<Screen>("home");
   const [input, setInput] = useState<LessonInput>(defaultLessonInput);
   const [plan, setPlan] = useState<LessonPlan | null>(null);
@@ -55,17 +49,12 @@ export default function LessonDesignerApp() {
     setNotice(null);
 
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input }),
-      });
-      const data = (await response.json()) as GenerateLessonResponse;
+      const data = await requestLessonPlan(input);
       setPlan(data.plan);
       setNotice(data.source === "fallback" ? data.message ?? "더미 결과를 표시했습니다." : "OpenAI API 결과를 생성했습니다.");
       setScreen("result");
     } catch {
-      setNotice("브라우저에서 API 요청을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setNotice("API 요청을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setLoading(false);
     }
@@ -121,7 +110,7 @@ export default function LessonDesignerApp() {
                   onClick={generateLesson}
                   disabled={loading}
                 >
-                  기본 예시 바로 생성
+                  {loading ? "생성 중..." : "기본 예시 바로 생성"}
                 </button>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { createFallbackLesson } from "../src/lib/fallback-lesson";
+import { createFallbackLesson } from "@/lib/fallback-lesson";
 import {
   defaultLessonInput,
   fieldLabels,
@@ -6,23 +6,8 @@ import {
   type GenerateLessonResponse,
   type LessonInput,
   type LessonPlan,
-} from "../src/lib/lesson-types";
-import { LESSON_DESIGN_SYSTEM_PROMPT, LESSON_DESIGN_USER_PROMPT_GUIDE } from "../src/lib/system-prompt";
-
-export const config = {
-  maxDuration: 30,
-};
-
-type ApiRequest = {
-  method?: string;
-  body?: unknown;
-};
-
-type ApiResponse = {
-  setHeader(name: string, value: string | string[]): void;
-  status(code: number): ApiResponse;
-  json(body: unknown): void;
-};
+} from "@/lib/lesson-types";
+import { LESSON_DESIGN_SYSTEM_PROMPT, LESSON_DESIGN_USER_PROMPT_GUIDE } from "@/lib/system-prompt";
 
 type OpenAIGenerationResult =
   | { ok: true; plan: LessonPlan }
@@ -62,22 +47,6 @@ function isLessonPlan(value: unknown): value is LessonPlan {
         section.content.every((item) => typeof item === "string"),
     )
   );
-}
-
-function readBody(body: unknown): { input?: unknown } {
-  if (!body) {
-    return {};
-  }
-
-  if (typeof body === "string") {
-    try {
-      return JSON.parse(body) as { input?: unknown };
-    } catch {
-      return {};
-    }
-  }
-
-  return typeof body === "object" ? (body as { input?: unknown }) : {};
 }
 
 function buildPrompt(input: LessonInput) {
@@ -171,28 +140,17 @@ async function generateWithOpenAI(input: LessonInput): Promise<OpenAIGenerationR
   }
 }
 
-export default async function handler(request: ApiRequest, response: ApiResponse) {
-  response.setHeader("Allow", "POST");
-
-  if (request.method !== "POST") {
-    response.status(405).json({ error: "Method Not Allowed" });
-    return;
-  }
-
-  const body = readBody(request.body);
-  const input = isLessonInput(body.input) ? body.input : defaultLessonInput;
-
+export async function createLessonPlanResponse(inputValue: unknown): Promise<GenerateLessonResponse> {
+  const input = isLessonInput(inputValue) ? inputValue : defaultLessonInput;
   const result = await generateWithOpenAI(input);
+
   if (result.ok) {
-    const payload: GenerateLessonResponse = { plan: result.plan, source: "openai" };
-    response.status(200).json(payload);
-    return;
+    return { plan: result.plan, source: "openai" };
   }
 
-  const payload: GenerateLessonResponse = {
+  return {
     plan: createFallbackLesson(input),
     source: "fallback",
     message: `${result.reason} 더미 결과를 표시했습니다.`,
   };
-  response.status(200).json(payload);
 }

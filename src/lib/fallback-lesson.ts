@@ -17,7 +17,7 @@ export function createFallbackLesson(input: LessonInput): LessonPlan {
   const count = getSessionCount(input.sessions);
   const flow = Array.from({ length: count }, (_, index) => {
     const session = index + 1;
-    return `${session}차시: ${input.caseField}의 실제 문제를 한 가지 제시하고, 학생들이 문제 상황을 관찰한 뒤 ${input.tool}로 해결 아이디어를 실험한다. 활동 말미에는 모둠별 근거, 한계, 개선점을 3문장으로 정리한다.`;
+    return `${session}차시: ${input.caseField}의 실제 문제를 제시하고, 학생들이 문제 상황을 관찰한 뒤 ${input.tool}로 해결 아이디어를 실험한다. 활동 말미에는 모둠별 근거, 한계, 개선점을 3문장으로 정리한다.`;
   });
 
   return {
@@ -39,31 +39,27 @@ export function createFallbackLesson(input: LessonInput): LessonPlan {
         title: "학습 목표",
         content: [
           `${input.topic}의 핵심 개념을 실제 사례와 연결해 설명할 수 있다.`,
-          `${input.tool}를 활용해 사례 문제를 탐색하고 해결 아이디어를 시각화하거나 글로 표현할 수 있다.`,
-          `AI 활용 결과의 장점, 한계, 윤리적 고려사항을 근거와 함께 말할 수 있다.`,
+          `${input.tool}를 활용해 사례 문제를 탐색하고 해결 아이디어를 표현할 수 있다.`,
+          "AI 활용 결과의 장점, 한계, 윤리적 고려사항을 근거와 함께 말할 수 있다.",
         ],
       },
-      {
-        id: "flow",
-        title: "차시별 수업 흐름",
-        content: flow,
-      },
+      { id: "flow", title: "차시별 수업 흐름", content: flow },
       {
         id: "caseActivities",
         title: "실제 사례 기반 활동",
         content: [
-          `도입: ${input.caseField}에서 학생이 겪을 법한 구체적 장면을 제시하고, AI가 도움을 줄 수 있는 지점을 표시하게 합니다.`,
-          `탐구: 모둠별로 사례 속 이해관계자, 필요한 데이터, 예상되는 위험을 분류합니다.`,
-          `공유: 해결안 발표 후 다른 모둠이 “현실성, 공정성, 안전성” 관점에서 피드백합니다.`,
+          `도입: ${input.caseField}에서 학생이 겪을 법한 구체적 장면을 제시하고, AI가 도울 수 있는 지점을 표시하게 합니다.`,
+          "탐구: 모둠별로 사례 속 이해관계자, 필요한 데이터, 예상되는 위험을 분류합니다.",
+          "공유: 해결안 발표 후 다른 모둠이 현실성, 공정성, 안전성 관점에서 피드백합니다.",
         ],
       },
       {
         id: "project",
         title: "프로젝트 활동",
         content: [
-          `프로젝트 과제: ${input.caseField} 문제를 해결하는 AI 활용 수업 산출물을 제작합니다.`,
-          `산출물 예시: 문제 정의서, AI 활용 절차, 결과물 화면, 한계와 보완 계획, 발표 자료.`,
-          `교사는 문제 범위를 좁혀 주고, 학생은 모둠 역할을 정해 자료 조사, 도구 실습, 검토, 발표를 나눠 수행합니다.`,
+          `프로젝트 과제: ${input.caseField} 문제를 해결하는 AI 활용 산출물을 제작합니다.`,
+          "산출물 예시: 문제 정의서, AI 활용 절차, 결과물 화면, 한계와 보완 계획, 발표 자료.",
+          "교사는 문제 범위를 좁혀 주고, 학생은 자료 조사, 도구 실습, 검토, 발표를 나누어 수행합니다.",
         ],
       },
       {

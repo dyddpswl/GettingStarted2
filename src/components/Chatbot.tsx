@@ -53,8 +53,8 @@ export default function Chatbot() {
       setPlan(data.plan);
       setNotice(data.source === "fallback" ? data.message ?? "더미 결과를 표시했습니다." : "OpenAI API 결과를 생성했습니다.");
       setScreen("result");
-    } catch {
-      setNotice("API 요청을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "API 요청을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setLoading(false);
     }
@@ -96,7 +96,6 @@ export default function Chatbot() {
               </h2>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-700">
                 학교급, 주제, 학생 수준, 활용 도구를 선택하면 수업 개요부터 활동지, 루브릭, 성찰 질문까지 한 번에 구성합니다.
-                API 키가 없어도 수업 검토가 가능한 더미 결과가 제공됩니다.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <button
@@ -106,13 +105,14 @@ export default function Chatbot() {
                   수업 조건 선택하기
                 </button>
                 <button
-                  className="rounded-md border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+                  className="rounded-md border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                   onClick={generateLesson}
                   disabled={loading}
                 >
-                  {loading ? "생성 중..." : "기본 예시 바로 생성"}
+                  {loading ? "설계 중..." : "기본 예시 바로 생성"}
                 </button>
               </div>
+              {notice && <p className="mt-4 text-sm font-medium text-amber-700">{notice}</p>}
             </div>
             <div className="grid gap-4">
               {[
@@ -142,7 +142,7 @@ export default function Chatbot() {
                   onClick={generateLesson}
                   disabled={loading}
                 >
-                  {loading ? "생성 중..." : "수업설계안 생성"}
+                  {loading ? "설계 중..." : "수업설계안 생성"}
                 </button>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
@@ -163,6 +163,7 @@ export default function Chatbot() {
                   </label>
                 ))}
               </div>
+              {notice && <p className="mt-4 text-sm font-medium text-amber-700">{notice}</p>}
             </div>
             <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-6 lg:self-start">
               <h3 className="text-lg font-bold">현재 선택값</h3>
@@ -196,7 +197,7 @@ export default function Chatbot() {
                     PDF 다운로드
                   </button>
                   <button className="rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white" onClick={generateLesson} disabled={loading}>
-                    {loading ? "생성 중..." : "다시 생성하기"}
+                    {loading ? "설계 중..." : "다시 생성하기"}
                   </button>
                   <button className="rounded-md border border-slate-300 bg-white px-4 py-2 font-semibold" onClick={() => setScreen("form")}>
                     조건 수정

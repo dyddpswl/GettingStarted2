@@ -14,7 +14,14 @@ export async function requestLessonPlan(input: LessonInput): Promise<GenerateLes
       signal: controller.signal,
     });
 
-    const data = (await response.json()) as GenerateLessonResponse | { error?: string };
+    const responseText = await response.text();
+    let data: GenerateLessonResponse | { error?: string };
+
+    try {
+      data = JSON.parse(responseText) as GenerateLessonResponse | { error?: string };
+    } catch {
+      throw new Error("API가 JSON이 아닌 응답을 반환했습니다. Vercel 배포의 /api/chat 라우트를 확인해 주세요.");
+    }
 
     if (!response.ok || !("plan" in data)) {
       throw new Error("수업설계안 생성 요청에 실패했습니다.");

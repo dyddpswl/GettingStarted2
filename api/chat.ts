@@ -1,7 +1,24 @@
-import { createFallbackLesson } from "@/lib/fallback-lesson";
-import { defaultLessonInput, fieldLabels, lessonOptions, type GenerateLessonResponse, type LessonInput, type LessonPlan } from "@/lib/lesson-types";
+import { createFallbackLesson } from "../src/lib/fallback-lesson";
+import {
+  defaultLessonInput,
+  fieldLabels,
+  lessonOptions,
+  type GenerateLessonResponse,
+  type LessonInput,
+  type LessonPlan,
+} from "../src/lib/lesson-types";
 
-export const runtime = "nodejs";
+type ApiRequest = {
+  method?: string;
+  body?: unknown;
+};
+
+type ApiResponse = {
+  setHeader(name: string, value: string | string[]): void;
+  status(code: number): ApiResponse;
+  json(body: unknown): void;
+  end(body?: string): void;
+};
 
 function isLessonInput(value: unknown): value is LessonInput {
   if (!value || typeof value !== "object") {
@@ -37,22 +54,44 @@ function isLessonPlan(value: unknown): value is LessonPlan {
   );
 }
 
+function readBody(body: unknown): { input?: unknown } {
+  if (!body) {
+    return {};
+  }
+
+  if (typeof body === "string") {
+    try {
+      return JSON.parse(body) as { input?: unknown };
+    } catch {
+      return {};
+    }
+  }
+
+  if (typeof body === "object") {
+    return body as { input?: unknown };
+  }
+
+  return {};
+}
+
 function buildPrompt(input: LessonInput) {
   const conditions = (Object.keys(fieldLabels) as Array<keyof LessonInput>)
     .map((key) => `- ${fieldLabels[key]}: ${input[key]}`)
     .join("\n");
 
-  return `공교육 교사를 위한 사례 기반 AI 수업설계안을 한국어로 작성해 주세요.
+  return `한국 공교육 교사가 바로 수업에 활용할 수 있는 사례 기반 AI 수업설계안을 작성해 주세요.
 
 입력 조건:
 ${conditions}
 
-반드시 지킬 조건:
-- 모든 차시에 실제 사례 또는 현실 문제 상황을 포함합니다.
-- 학생 수준에 맞게 쉬운 표현과 구체적인 교사 안내를 사용합니다.
-- 단순 설명형이 아니라 사례 기반, 참여형, PBL 중심으로 설계합니다.
-- 교사가 바로 활용할 수 있도록 활동, 평가, 루브릭을 구체적으로 작성합니다.
-- 응답은 마크다운이 아니라 아래 JSON 스키마만 반환합니다.
+작성 기준:
+- 모든 차시에 실제 사례 또는 현실 문제 상황을 반드시 포함합니다.
+- 학생 수준에 맞게 용어를 쉽게 풀고, 교사가 말할 수 있는 안내 문장 수준으로 구체화합니다.
+- 단순 설명형 수업이 아니라 사례 기반, 참여형, PBL 중심 수업으로 설계합니다.
+- 실제 수업 운영이 가능하도록 준비물, 모둠 활동, 질문, 산출물, 평가 기준을 구체적으로 포함합니다.
+- 개인정보, 저작권, 편향, 안전성 등 AI 윤리 점검 요소를 반영합니다.
+- 차시별 흐름은 도입-탐구/실습-공유/성찰의 흐름이 보이게 작성합니다.
+- 응답은 마크다운이 아니라 유효한 JSON 객체만 반환합니다.
 
 JSON 스키마:
 {
@@ -92,14 +131,15 @@ async function generateWithOpenAI(input: LessonInput): Promise<LessonPlan | null
       messages: [
         {
           role: "system",
-          content: "당신은 한국 공교육 AI·정보 교사를 돕는 수업설계 전문가입니다. 응답은 유효한 JSON만 반환합니다.",
+          content:
+            "당신은 한국 공교육 AI·정보 교사를 돕는 수업설계 전문가입니다. 실제 사례, PBL, 평가 루브릭을 구체적으로 설계하고 유효한 JSON만 반환합니다.",
         },
         {
           role: "user",
           content: buildPrompt(input),
         },
       ],
-      temperature: 0.7,
+      temperature: 0.65,
     }),
   });
 
@@ -123,37 +163,26 @@ async function generateWithOpenAI(input: LessonInput): Promise<LessonPlan | null
   }
 }
 
-export async function POST(request: Request) {
-  let input = defaultLessonInput;
+export default async function handler(request: ApiRequest, response: ApiResponse) {
+  response.setHeader("Allow", "POST");
 
-  try {
-    const body = (await request.json()) as { input?: unknown };
-    if (!isLessonInput(body.input)) {
-      const payload: GenerateLessonResponse = {
-        plan: createFallbackLesson(input),
-        source: "fallback",
-        message: "입력값이 올바르지 않아 기본 조건으로 더미 결과를 생성했습니다.",
-      };
-      return Response.json(payload, { status: 400 });
-    }
-    input = body.input;
-  } catch {
-    const payload: GenerateLessonResponse = {
-      plan: createFallbackLesson(input),
-      source: "fallback",
-      message: "요청 본문을 읽지 못해 기본 더미 결과를 생성했습니다.",
-    };
-    return Response.json(payload, { status: 400 });
+  if (request.method !== "POST") {
+    response.status(405).json({ error: "Method Not Allowed" });
+    return;
   }
+
+  const body = readBody(request.body);
+  const input = isLessonInput(body.input) ? body.input : defaultLessonInput;
 
   try {
     const openAiPlan = await generateWithOpenAI(input);
     if (openAiPlan) {
       const payload: GenerateLessonResponse = { plan: openAiPlan, source: "openai" };
-      return Response.json(payload);
+      response.status(200).json(payload);
+      return;
     }
   } catch {
-    // Fall through to a deterministic plan so the classroom workflow remains usable.
+    // Keep the app useful even when the GPT API is unavailable.
   }
 
   const payload: GenerateLessonResponse = {
@@ -161,5 +190,5 @@ export async function POST(request: Request) {
     source: "fallback",
     message: "OpenAI API를 사용할 수 없어 더미 결과를 표시했습니다.",
   };
-  return Response.json(payload);
+  response.status(200).json(payload);
 }
